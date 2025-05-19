@@ -162,92 +162,114 @@ class DynamicResponseManager:
 
     def _adjust_probabilities_for_variety(self, probabilities: Dict[str, float]) -> None:
         """
-        Adjust probabilities to avoid repetitive patterns
+        Adjust probabilities to encourage natural variation and avoid monotonous repetition of response lengths.
+        This aims for a more human-like flow where conversation length ebbs and flows.
 
         Args:
             probabilities: The current probability distribution
         """
-        # If we've had the same response type multiple times in a row, reduce its probability
-        if self.consecutive_same_type_count > 0 and self.last_response_type:
-            # More aggressive reduction to avoid repetition
-            reduction_factor = min(0.3, 0.8 ** self.consecutive_same_type_count)
+        if self.last_response_type and self.consecutive_same_type_count > 0:
+            # Reduce the probability of the last response type, especially if repeated.
+            # The reduction becomes more significant with more repetitions, but with a cap to avoid zeroing out.
+            reduction_factor = max(0.1, 0.75 - (self.consecutive_same_type_count * 0.15))
             probabilities[self.last_response_type] *= reduction_factor
+            logger.debug(f"Reduced probability of {self.last_response_type} due to {self.consecutive_same_type_count} repetitions. Factor: {reduction_factor:.2f}")
 
-            # Create natural variation in response length
-            if self.consecutive_same_type_count >= 1:
-                # If we've been giving extremely short responses, favor slightly short and medium
-                if self.last_response_type == "extremely_short":
-                    probabilities["slightly_short"] *= 2.0
-                    probabilities["medium"] *= 1.8
-                    probabilities["slightly_long"] *= 1.2
-                    # Still allow some extremely short responses for natural variation
-                    if random.random() < 0.3:
-                        probabilities["extremely_short"] *= 0.8
+            # After a repetition, actively encourage a shift to a *different* length category.
+            # This is more nuanced than just picking any other; it tries to create a gentle contrast.
+            if self.consecutive_same_type_count >= 1: # If there's been at least one repetition
+                # Define transitions to encourage a natural flow rather than abrupt jumps.
+                transitions = {
+                    "extremely_short": ["slightly_short", "medium"], # After very short, go slightly longer
+                    "slightly_short": ["medium", "extremely_short", "slightly_long"], # Can go shorter, medium, or a bit longer
+                    "medium": ["slightly_short", "slightly_long", "long"], # From medium, can vary more widely
+                    "slightly_long": ["medium", "long", "slightly_short"], # After longish, can go medium, very long, or shorter
+                    "long": ["medium", "slightly_long"] # After very long, tend towards medium or slightly long
+                }
+                possible_next_types = transitions.get(self.last_response_type, list(probabilities.keys()))
 
-                # If we've been giving slightly short responses, favor medium and extremely short
-                elif self.last_response_type == "slightly_short":
-                    probabilities["medium"] *= 2.0
-                    probabilities["extremely_short"] *= 1.5
-                    probabilities["slightly_long"] *= 1.2
+                # Boost the probabilities of these suggested next types.
+                for next_type in possible_next_types:
+                    if next_type in probabilities: # Ensure the type exists
+                        probabilities[next_type] *= random.uniform(1.5, 2.5) # Moderate boost
+                logger.debug(f"After {self.last_response_type}, boosting {possible_next_types}")
 
-                # If we've been giving medium responses, favor slightly short and slightly long
-                elif self.last_response_type == "medium":
-                    probabilities["slightly_short"] *= 1.8
-                    probabilities["slightly_long"] *= 1.8
-                    probabilities["extremely_short"] *= 1.2
-                    probabilities["long"] *= 1.2
+        # Independent of repetition, occasionally (but not too often) introduce a 'surprise' element.
+        # This is a small chance to significantly boost a random response type, just to keep things fresh
+        # and mimic the occasional unexpected conversational turn.
+        if random.random() < 0.12:  # 12% chance for a 'surprise' boost
+            surprise_type = random.choice(list(probabilities.keys()))
+            probabilities[surprise_type] *= random.uniform(2.0, 3.5) # A noticeable, but not extreme, boost
+            logger.debug(f"Surprise boost for {surprise_type}")
 
-                # If we've been giving slightly long responses, favor medium and long
-                elif self.last_response_type == "slightly_long":
-                    probabilities["medium"] *= 1.8
-                    probabilities["long"] *= 1.5
-                    probabilities["slightly_short"] *= 1.2
-
-                # If we've been giving long responses, favor medium and slightly long
-                elif self.last_response_type == "long":
-                    probabilities["medium"] *= 2.0
-                    probabilities["slightly_long"] *= 1.5
-                    probabilities["slightly_short"] *= 1.2
-                    probabilities["extremely_short"] *= 0.8  # Reduce but don't eliminate
-
-            # Occasionally introduce completely random variation for more natural patterns
-            if random.random() < 0.15:  # Reduced from 0.2
-                # Choose a random response type with weighted probability
-                response_types = list(probabilities.keys())
-                weights = [0.2, 0.25, 0.3, 0.15, 0.1]  # Match our base probabilities
-                random_type = random.choices(response_types, weights=weights, k=1)[0]
-                # Boost its probability moderately
-                probabilities[random_type] *= 2.5  # Reduced from 4.0
+        # Ensure probabilities don't get too skewed or too low
+        for key in probabilities:
+            if probabilities[key] < 0.001: # Prevent zero or negative probabilities
+                probabilities[key] = 0.001
+            elif probabilities[key] > 100.0: # Cap extremely high probabilities to maintain balance
+                probabilities[key] = 100.0
 
     def _apply_randomness(self, probabilities: Dict[str, float]) -> None:
         """
-        Apply extreme randomness factor to probabilities for completely unpredictable response lengths
+        Apply a sophisticated randomness factor to probabilities for more natural and unpredictable response lengths.
+        This aims to mimic human conversation patterns where length isn't strictly rule-based but flows organically.
 
         Args:
             probabilities: The current probability distribution
         """
-        # Maksimum randomness (1.0) kullanarak tamamen öngörülemez yanıt uzunlukları oluştur
-        randomness = 1.0  # Her zaman maksimum randomness kullan
+        # Introduce a base level of general flux to all probabilities to prevent stagnation.
+        # This simulates the slight, almost imperceptible shifts in human conversational energy.
         for key in probabilities:
-            # Daha geniş bir aralıkta rastgele ayarlama uygula
-            random_adjustment = 1.0 + randomness * (random.random() * 4 - 2.0)  # -2.0 ile 2.0 arasında değişim
-            probabilities[key] *= random_adjustment
+            # Apply a gentle, non-extreme random adjustment. The range is smaller to avoid chaotic swings
+            # and favor more subtle, natural-feeling variations.
+            subtle_random_factor = random.uniform(0.85, 1.15) # Slight boost or reduction
+            probabilities[key] *= subtle_random_factor
 
-        # Daha sık olarak tamamen rastgele bir yanıt türünü seç ve olasılığını büyük ölçüde artır
-        if random.random() < 0.5:  # %50 olasılıkla
-            # Kısa yanıtlara daha fazla ağırlık ver
-            weights = [0.35, 0.30, 0.20, 0.10, 0.05]  # Kısa yanıtlara daha yüksek ağırlık
-            response_types = list(probabilities.keys())
-            random_key = random.choices(response_types, weights=weights, k=1)[0]
-            probabilities[random_key] *= random.uniform(3.0, 8.0)  # 3-8 kat artış
+        # Periodically, with a moderate chance, introduce a more significant, but still context-aware, shift.
+        # This is like a person suddenly having more to say on a topic, or conversely, being more succinct.
+        if random.random() < 0.35: # 35% chance for a more noticeable, but not extreme, shift
+            # Determine if this shift will favor shorter or longer responses, or a mix.
+            # This isn't about picking one type, but nudging the overall distribution.
+            shift_direction = random.choice(["favor_shorter", "favor_longer", "favor_medium_unpredictable"])
 
-        # Bazen de tamamen rastgele bir yanıt türünü seçerek gerçek insan davranışını taklit et
-        if random.random() < 0.2:  # %20 olasılıkla
-            # Tüm olasılıkları sıfırla ve sadece bir yanıt türünü seç
+            if shift_direction == "favor_shorter":
+                probabilities["extremely_short"] *= random.uniform(1.5, 2.5)
+                probabilities["slightly_short"] *= random.uniform(1.3, 2.0)
+                probabilities["medium"] *= random.uniform(0.8, 1.1) # Slight or no change
+                probabilities["slightly_long"] *= random.uniform(0.6, 0.9)
+                probabilities["long"] *= random.uniform(0.4, 0.7)
+            elif shift_direction == "favor_longer":
+                probabilities["extremely_short"] *= random.uniform(0.4, 0.7)
+                probabilities["slightly_short"] *= random.uniform(0.6, 0.9)
+                probabilities["medium"] *= random.uniform(1.1, 1.4)
+                probabilities["slightly_long"] *= random.uniform(1.5, 2.5)
+                probabilities["long"] *= random.uniform(1.7, 3.0)
+            elif shift_direction == "favor_medium_unpredictable":
+                # Boost medium, but also slightly boost extremes for unpredictability
+                probabilities["medium"] *= random.uniform(1.5, 2.5)
+                probabilities["extremely_short"] *= random.uniform(1.1, 1.5)
+                probabilities["long"] *= random.uniform(1.1, 1.5)
+                probabilities["slightly_short"] *= random.uniform(0.9, 1.2)
+                probabilities["slightly_long"] *= random.uniform(0.9, 1.2)
+
+        # Very rarely, introduce a 'wildcard' factor: a strong, somewhat unexpected emphasis on a particular length.
+        # This simulates those moments in conversation where someone gives an unusually brief or lengthy reply for no obvious reason.
+        # This should be rare to avoid making the bot seem erratic.
+        if random.random() < 0.10:  # 10% chance for a wildcard event
+            chosen_type = random.choice(list(probabilities.keys()))
+            # Give a significant, but not overwhelming, boost to the chosen type.
+            # Also, slightly suppress other types to make the chosen one stand out more.
             for key in probabilities:
-                probabilities[key] = 0.001  # Çok düşük bir değer
-            random_key = random.choice(list(probabilities.keys()))
-            probabilities[random_key] = 1.0  # Seçilen yanıt türünü garantile
+                if key == chosen_type:
+                    probabilities[key] *= random.uniform(2.5, 4.5)
+                else:
+                    probabilities[key] *= random.uniform(0.5, 0.8) # Suppress others slightly
+
+        # Ensure no probability becomes zero or negative after adjustments
+        for key in probabilities:
+            if probabilities[key] < 0.001:
+                probabilities[key] = 0.001
+
 
     def _select_response_type(self, probabilities: Dict[str, float]) -> str:
         """
@@ -288,19 +310,58 @@ class DynamicResponseManager:
             Instructions for the model to generate a response of the appropriate length
         """
         # Yanıt türüne göre farklı talimatlar ver, daha uzun ve insan gibi yanıtlar için
+        # ÖNEMLİ NOT: Bu yönlendirmeler, yapay zekanın bir insan gibi, doğal ve akıcı bir Türkçe ile yanıt vermesini sağlamak için tasarlanmıştır.
+        # Yanıt uzunlukları bir kılavuzdur; asıl amaç, bağlama ve konuşmanın akışına uygun, doğal bir sohbet deneyimi yaratmaktır.
+        # Yapay zeka, bir metin yazarı veya bir asistan gibi değil, sıradan bir insan gibi konuşmalıdır.
+        # Cevaplar kesinlikle robotik veya önceden programlanmış gibi olmamalıdır.
+        # Duygusal zeka ipuçları, konuşma tonu ve üslup, insan benzeri bir etkileşim için kritik öneme sahiptir.
+
         if response_type == "extremely_short":
-            return "Yanıtını KISA tut - 1-2 cümle. Gerçek bir insan gibi doğal bir şekilde yanıt ver. Temel bilgileri içer. Mesajlaşma uygulamasında doğal bir şekilde cevap veren biri gibi davran."
+            return (
+                "Bir arkadaşınla mesajlaşır gibi, kısacık ve öz bir yanıt ver. Belki sadece birkaç kelime veya bir cümle yeterli olacaktır. "
+                "Sanki acelen varmış da hızlıca bir şey söyleyip geçiyormuşsun gibi düşün. Örneğin, 'Aynen katılıyorum.' ya da 'Tamamdır, anladım.' gibi. "
+                "Çok fazla detaya girme, sadece ana fikri ver. Doğal ol, kasma kendini. Unutma, amaç hızlı ve etkili iletişim."
+            )
         elif response_type == "slightly_short":
-            return "Yanıtını BİRAZ KISA tut - 2-3 cümle. Doğal bir şekilde mesajlaşan bir insan gibi yanıt ver. Temel bilgileri ve birkaç detay ver. Doğal ve akıcı konuş. Gerçek bir insan gibi, konuyu açıkla."
+            return (
+                "Biraz daha sohbet havasında ama yine de kısa tutmaya çalış. Bir iki cümleyle ne demek istediğini anlat. "
+                "Belki küçük bir detay ekleyebilirsin ama konuyu çok uzatma. Mesela, 'Evet, o film gerçekten güzeldi, özellikle son sahnesi çok etkileyiciydi.' gibi. "
+                "Samimi ve rahat bir dil kullan. Karşındaki kişiyle gerçekten sohbet ediyormuşsun gibi hissettir. "
+                "Amacımız, kısa ama anlamlı bir diyalog kurmak."
+            )
         elif response_type == "medium":
-            return "ORTA UZUNLUKTA bir yanıt ver - 3-5 cümle. Detaylı bilgiler ver. Normal bir sohbette konuşan biri gibi davran. Konuyu açıkla ve örnekler ver. Doğal bir akışla yanıt ver."
+            return (
+                "Şimdi biraz daha rahat olabilirsin. Konuyu biraz daha açarak, 3-5 cümlelik bir yanıt ver. "
+                "Düşüncelerini biraz daha detaylandırabilir, belki küçük bir örnekle destekleyebilirsin. "
+                "Örneğin, 'Bu konu hakkında biraz araştırma yaptım ve birkaç ilginç makaleye denk geldim. Özellikle X teorisi oldukça mantıklı görünüyor çünkü...' gibi. "
+                "Akıcı ve doğal bir üslup kullan. Sanki bir kahve molasında arkadaşınla önemli bir konuyu tartışıyormuşsun gibi. "
+                "Dengeli bir uzunlukta, bilgilendirici ama sıkıcı olmayan bir yanıt hedefle."
+            )
         elif response_type == "slightly_long":
-            return "BİRAZ UZUN bir yanıt ver - 5-7 cümle. Detaylı bilgiler ve açıklamalar ver. Konuyu derinlemesine açıkla. Örnekler ve karşılaştırmalar kullan. Doğal bir insan gibi, akıcı ve bağlantılı cümleler kur."
+            return (
+                "Konuya biraz daha derinlemesine girme zamanı. 5-7 cümlelik, daha kapsamlı bir yanıt oluştur. "
+                "Farklı açılardan yaklaşabilir, argümanlarını gerekçelendirebilirsin. Belki kişisel bir deneyimini veya gözlemini paylaşabilirsin. "
+                "Mesela, 'Bu konunun toplumsal etkileri üzerine düşündüğümde, özellikle genç nesiller üzerindeki potansiyel sonuçları endişe verici buluyorum. Örneğin, yapılan bir araştırmaya göre...' gibi. "
+                "Anlatımını zenginleştir, düşündürücü ve ilgi çekici olmaya çalış. Karşındakini konunun içine çek. "
+                "Sadece bilgi vermekle kalma, aynı zamanda bir perspektif sun."
+            )
         elif response_type == "long":
-            return "UZUN ve DETAYLI bir yanıt ver - 7-10 cümle. Konuyu kapsamlı bir şekilde açıkla. Detaylı bilgiler, örnekler ve açıklamalar ver. Farklı bakış açıları sun. Doğal bir insan gibi, akıcı ve bağlantılı paragraflar oluştur. Konuyu derinlemesine ele al."
+            return (
+                "Şimdi tam anlamıyla dökülme zamanı! 7-10 cümle, hatta belki biraz daha uzun, detaylı ve kapsamlı bir yanıt ver. "
+                "Konuyu enine boyuna ele al, farklı argümanları karşılaştır, örneklerle zenginleştir, belki bir çıkarımda bulun. "
+                "Örneğin, 'Bu karmaşık sorunun çözümü için birden fazla faktörü göz önünde bulundurmamız gerekiyor. Tarihsel arka planına baktığımızda... Ekonomik boyutunu incelediğimizde... Sosyolojik açıdan değerlendirdiğimizde ise... Tüm bunları bir araya getirdiğimizde, şöyle bir sonuca varabiliriz: ...' gibi. "
+                "Akademik bir dil kullanmaktan çekinme ama yine de anlaşılır ve akıcı olmaya özen göster. "
+                "Amacın, konuyu tüm yönleriyle aydınlatmak ve derinlemesine bir analiz sunmak. Karşındakini etkileyecek, düşündürecek ve belki de yeni bir bakış açısı kazandıracak bir yanıt oluştur."
+            )
         else:
-            # Default instruction - doğal ve insan gibi
-            return "Tamamen doğal bir insan gibi yanıt ver. Mesaj uzunluğunu önceden planlamadan, doğal şekilde belirle. Detaylı ve kapsamlı yanıtlar ver. Gerçek bir insan gibi, konuyu derinlemesine açıkla. Normal bir sohbette konuşan biri gibi davran, doğal ve akıcı bir dil kullan."
+            # Varsayılan talimat: Tamamen doğal, insan gibi, uzunluğa takılmadan.
+            return (
+                "Şu an nasıl hissediyorsan öyle konuş. Uzunluğunu hiç düşünme, içinden geldiği gibi, tamamen doğal bir şekilde yanıt ver. "
+                "Bazen kısa kesersin, bazen uzun uzun anlatırsın, tıpkı gerçek bir sohbette olduğu gibi. "
+                "Önemli olan samimiyetin ve düşüncelerini akıcı bir şekilde ifade etmen. "
+                "Kendini bir kalıba sokmaya çalışma. Sadece konuş, anlat, paylaş. "
+                "Unutma, en iyi sohbetler planlanmadan, kendiliğinden gelişenlerdir."
+            )
 
     def get_language_level(self, message_content: str, context: Optional[Dict[str, Any]] = None) -> str:
         """
