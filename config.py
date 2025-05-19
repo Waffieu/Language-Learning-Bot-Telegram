@@ -95,7 +95,7 @@ SELF_REFLECTION_ENABLED = False
 SELF_REFLECTION_PROBABILITY = 0.0
 
 # Gemini model settings
-GEMINI_MODEL = "gemini-2.0-flash-lite"
+GEMINI_MODEL = "gemini-2.5-flash-preview-04-17"
 GEMINI_TEMPERATURE = 1.0  # Maximum temperature for ultra-creative, unpredictable, and human-like responses
 GEMINI_TOP_P = 0.99
 GEMINI_TOP_K = 80
