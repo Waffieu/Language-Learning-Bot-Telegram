@@ -83,11 +83,11 @@ class DynamicResponseManager:
         # Adjust probabilities based on the user's message content
         # Adjust probabilities to strongly favor shorter/medium responses for a more concise, human-like style
         # Further biasing towards shorter responses by default
-        probabilities["extremely_short"] *= 3.0  # Significantly increase probability of very short responses
-        probabilities["slightly_short"] *= 2.5   # Increase probability of slightly short responses
-        probabilities["medium"] *= 2.0       # Increase probability of medium responses
-        probabilities["slightly_long"] *= 0.4    # Significantly decrease probability of slightly long responses
-        probabilities["long"] *= 0.2         # Drastically decrease probability of long responses
+        probabilities["extremely_short"] *= 4.0  # Significantly increase probability of very short responses
+        probabilities["slightly_short"] *= 3.0   # Increase probability of slightly short responses
+        probabilities["medium"] *= 2.5       # Increase probability of medium responses
+        probabilities["slightly_long"] *= 0.3    # Significantly decrease probability of slightly long responses
+        probabilities["long"] *= 0.1         # Drastically decrease probability of long responses
 
         # Specific adjustments based on message content length and type
         if len(message_content) < 50:
@@ -139,27 +139,27 @@ class DynamicResponseManager:
         """
         # Adjust probabilities based on conversation context to favor shorter responses overall
         if context.get("is_first_message", False):
-            probabilities["extremely_short"] *= 1.5 # Favor shorter first responses
-            probabilities["slightly_short"] *= 1.3
+            probabilities["extremely_short"] *= 2.0 # Favor shorter first responses
+            probabilities["slightly_short"] *= 1.5
             probabilities["medium"] *= 1.0
-            probabilities["slightly_long"] *= 0.7
-            probabilities["long"] *= 0.5
+            probabilities["slightly_long"] *= 0.6
+            probabilities["long"] *= 0.4
 
         # If the conversation has been going on for a while, slightly increase chance of longer responses for variety, but still lean short/medium
         if context.get("message_count", 0) > 5:
-            probabilities["extremely_short"] *= 0.9
-            probabilities["slightly_short"] *= 1.0
-            probabilities["medium"] *= 1.1
-            probabilities["slightly_long"] *= 1.2
-            probabilities["long"] *= 1.0
+            probabilities["extremely_short"] *= 1.0
+            probabilities["slightly_short"] *= 1.1
+            probabilities["medium"] *= 1.2
+            probabilities["slightly_long"] *= 1.0
+            probabilities["long"] *= 0.8
 
         # If there's media, allow slightly longer responses for description, but still lean shorter overall
         if context.get("has_media", False):
-            probabilities["extremely_short"] *= 0.8
-            probabilities["slightly_short"] *= 0.9
-            probabilities["medium"] *= 1.1
-            probabilities["slightly_long"] *= 1.0
-            probabilities["long"] *= 0.9
+            probabilities["extremely_short"] *= 0.9
+            probabilities["slightly_short"] *= 1.0
+            probabilities["medium"] *= 1.2
+            probabilities["slightly_long"] *= 1.1
+            probabilities["long"] *= 1.0
 
     def _adjust_probabilities_for_variety(self, probabilities: Dict[str, float]) -> None:
         """
@@ -223,48 +223,41 @@ class DynamicResponseManager:
         for key in probabilities:
             # Apply a gentle, non-extreme random adjustment. The range is smaller to avoid chaotic swings
             # and favor more subtle, natural-feeling variations.
-            subtle_random_factor = random.uniform(0.85, 1.15) # Slight boost or reduction
+            subtle_random_factor = random.uniform(0.9, 1.1) # Slight boost or reduction
             probabilities[key] *= subtle_random_factor
 
         # Periodically, with a moderate chance, introduce a more significant, but still context-aware, shift.
         # This is like a person suddenly having more to say on a topic, or conversely, being more succinct.
-        if random.random() < 0.35: # 35% chance for a more noticeable, but not extreme, shift
+        if random.random() < 0.25: # 25% chance for a more noticeable, but not extreme, shift
             # Determine if this shift will favor shorter or longer responses, or a mix.
             # This isn't about picking one type, but nudging the overall distribution.
-            shift_direction = random.choice(["favor_shorter", "favor_longer", "favor_medium_unpredictable"])
+            shift_direction = random.choice(["favor_shorter", "favor_medium"])
 
             if shift_direction == "favor_shorter":
-                probabilities["extremely_short"] *= random.uniform(1.5, 2.5)
-                probabilities["slightly_short"] *= random.uniform(1.3, 2.0)
-                probabilities["medium"] *= random.uniform(0.8, 1.1) # Slight or no change
-                probabilities["slightly_long"] *= random.uniform(0.6, 0.9)
-                probabilities["long"] *= random.uniform(0.4, 0.7)
-            elif shift_direction == "favor_longer":
-                probabilities["extremely_short"] *= random.uniform(0.4, 0.7)
-                probabilities["slightly_short"] *= random.uniform(0.6, 0.9)
-                probabilities["medium"] *= random.uniform(1.1, 1.4)
-                probabilities["slightly_long"] *= random.uniform(1.5, 2.5)
-                probabilities["long"] *= random.uniform(1.7, 3.0)
-            elif shift_direction == "favor_medium_unpredictable":
-                # Boost medium, but also slightly boost extremes for unpredictability
+                probabilities["extremely_short"] *= random.uniform(1.8, 2.8)
+                probabilities["slightly_short"] *= random.uniform(1.5, 2.2)
+                probabilities["medium"] *= random.uniform(0.7, 1.0) # Slight or no change
+                probabilities["slightly_long"] *= random.uniform(0.5, 0.8)
+                probabilities["long"] *= random.uniform(0.3, 0.6)
+            elif shift_direction == "favor_medium":
+                probabilities["extremely_short"] *= random.uniform(0.6, 0.9)
+                probabilities["slightly_short"] *= random.uniform(0.8, 1.1)
                 probabilities["medium"] *= random.uniform(1.5, 2.5)
-                probabilities["extremely_short"] *= random.uniform(1.1, 1.5)
-                probabilities["long"] *= random.uniform(1.1, 1.5)
-                probabilities["slightly_short"] *= random.uniform(0.9, 1.2)
-                probabilities["slightly_long"] *= random.uniform(0.9, 1.2)
+                probabilities["slightly_long"] *= random.uniform(0.8, 1.1)
+                probabilities["long"] *= random.uniform(0.5, 0.8)
 
         # Very rarely, introduce a 'wildcard' factor: a strong, somewhat unexpected emphasis on a particular length.
         # This simulates those moments in conversation where someone gives an unusually brief or lengthy reply for no obvious reason.
         # This should be rare to avoid making the bot seem erratic.
-        if random.random() < 0.10:  # 10% chance for a wildcard event
-            chosen_type = random.choice(list(probabilities.keys()))
+        if random.random() < 0.05:  # 5% chance for a wildcard event
+            chosen_type = random.choice(["extremely_short", "slightly_short", "medium"])
             # Give a significant, but not overwhelming, boost to the chosen type.
             # Also, slightly suppress other types to make the chosen one stand out more.
             for key in probabilities:
                 if key == chosen_type:
-                    probabilities[key] *= random.uniform(2.5, 4.5)
+                    probabilities[key] *= random.uniform(3.0, 5.0)
                 else:
-                    probabilities[key] *= random.uniform(0.5, 0.8) # Suppress others slightly
+                    probabilities[key] *= random.uniform(0.4, 0.7) # Suppress others slightly
 
         # Ensure no probability becomes zero or negative after adjustments
         for key in probabilities:

@@ -275,10 +275,13 @@ class WordTranslator:
                 if '=' in line:
                     # Format should be: word = CEFR_LEVEL = translation
                     parts = line.split('=', 2)
+                    if len(parts) == 3:
+                        word = parts[0].strip().lower()
+                        level = parts[1].strip()
+                        translation = parts[2].strip()
 
-
-
-
+                        if translation != "[SKIP]":
+                            forced_translations[word] = (translation, level)
 
 
             # Update the cache with new translations
@@ -371,10 +374,14 @@ class WordTranslator:
                 if '=' in line:
                     # Format should be: word = CEFR_LEVEL = translation
                     parts = line.split('=', 2)
+                    if len(parts) == 3:
+                        word = parts[0].strip().lower()
+                        level = parts[1].strip()
+                        translation = parts[2].strip()
 
-
-
-
+                        if translation != "[SKIP]":
+                            translations[word] = (translation, level)
+                            cefr_levels[word] = level
 
 
             # Log the CEFR levels for debugging

@@ -271,8 +271,11 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         # Translate uncommon words in the bot's response
         if config.WORD_TRANSLATION_ENABLED:
             logger.debug("Translating uncommon words in bot's response.")
+            # Remove any potential duplicate translation appendix from the main response
+            response_final_text = re.sub(r'\n\n--- Wörterübersetzungen \(Kelime Çevirileri\) ---\n.*', '', response_final_text, flags=re.DOTALL)
+
             translated_response_text, translations = await word_translator.translate_uncommon_words(response_final_text, detected_language)
-            response_final_text = translated_response_text
+            # The line 'response_final_text = translated_response_text' is redundant as translate_uncommon_words returns the original text. Removed.
             if translations:
                 translation_appendix = word_translator.format_translations_for_response(translations)
                 response_final_text += translation_appendix
