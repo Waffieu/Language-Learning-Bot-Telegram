@@ -69,6 +69,7 @@ class DynamicResponseManager:
             self.last_response_type = response_type
 
         logger.debug(f"Selected response type: {response_type}")
+        # logger.debug(f"Probabilities: {normalized_probabilities}") # Removed logging of probabilities
         return response_type
 
     def _adjust_probabilities_for_content(self, probabilities: Dict[str, float], message_content: str) -> None:
@@ -80,12 +81,13 @@ class DynamicResponseManager:
             message_content: The user's message content
         """
         # Adjust probabilities based on the user's message content
-        # General adjustment to favor shorter/medium responses more often
-        probabilities["extremely_short"] *= 1.2
-        probabilities["slightly_short"] *= 1.5
-        probabilities["medium"] *= 1.3
-        probabilities["slightly_long"] *= 0.8
-        probabilities["long"] *= 0.6
+        # Adjust probabilities to strongly favor shorter/medium responses for a more concise, human-like style
+        # Further biasing towards shorter responses by default
+        probabilities["extremely_short"] *= 3.0  # Significantly increase probability of very short responses
+        probabilities["slightly_short"] *= 2.5   # Increase probability of slightly short responses
+        probabilities["medium"] *= 2.0       # Increase probability of medium responses
+        probabilities["slightly_long"] *= 0.4    # Significantly decrease probability of slightly long responses
+        probabilities["long"] *= 0.2         # Drastically decrease probability of long responses
 
         # Specific adjustments based on message content length and type
         if len(message_content) < 50:
@@ -135,30 +137,29 @@ class DynamicResponseManager:
             probabilities: The current probability distribution
             context: Context information about the conversation
         """
-        # Adjust probabilities based on conversation context
-        # Reduce the tendency to always give long responses based on context
+        # Adjust probabilities based on conversation context to favor shorter responses overall
         if context.get("is_first_message", False):
-            probabilities["extremely_short"] *= 0.8
-            probabilities["slightly_short"] *= 1.2
-            probabilities["medium"] *= 1.5
-            probabilities["slightly_long"] *= 1.0
-            probabilities["long"] *= 0.8
+            probabilities["extremely_short"] *= 1.5 # Favor shorter first responses
+            probabilities["slightly_short"] *= 1.3
+            probabilities["medium"] *= 1.0
+            probabilities["slightly_long"] *= 0.7
+            probabilities["long"] *= 0.5
 
-        # If the conversation has been going on for a while, slightly favor medium responses
+        # If the conversation has been going on for a while, slightly increase chance of longer responses for variety, but still lean short/medium
         if context.get("message_count", 0) > 5:
             probabilities["extremely_short"] *= 0.9
             probabilities["slightly_short"] *= 1.0
-            probabilities["medium"] *= 1.2
+            probabilities["medium"] *= 1.1
+            probabilities["slightly_long"] *= 1.2
+            probabilities["long"] *= 1.0
+
+        # If there's media, allow slightly longer responses for description, but still lean shorter overall
+        if context.get("has_media", False):
+            probabilities["extremely_short"] *= 0.8
+            probabilities["slightly_short"] *= 0.9
+            probabilities["medium"] *= 1.1
             probabilities["slightly_long"] *= 1.0
             probabilities["long"] *= 0.9
-
-        # If there's media, slightly favor longer descriptions but not excessively
-        if context.get("has_media", False):
-            probabilities["extremely_short"] *= 0.7
-            probabilities["slightly_short"] *= 0.8
-            probabilities["medium"] *= 1.0
-            probabilities["slightly_long"] *= 1.3
-            probabilities["long"] *= 1.2
 
     def _adjust_probabilities_for_variety(self, probabilities: Dict[str, float]) -> None:
         """
@@ -687,10 +688,10 @@ class DynamicResponseManager:
         instructions = self.get_response_length_instructions(response_type)
 
         return f"""
-        UZUN VE İNSAN GİBİ YANIT UZUNLUĞU TALİMATI:
+        RESPONSE LENGTH GUIDELINE:
         {instructions}
 
-        ÇOK ÖNEMLİ: Mesaj uzunluğunu tamamen doğal ve insan gibi belirle. Detaylı ve kapsamlı yanıtlar ver. Gerçek bir insan gibi, konuyu derinlemesine açıkla. Normal bir sohbette konuşan biri gibi davran, doğal ve akıcı bir dil kullan. Konuyu tam olarak anlatmak için yeterli uzunlukta cevaplar ver. Örnekler ve açıklamalar ekle. Birden fazla paragraf kullanmaktan çekinme. Konuyu farklı açılardan ele al. Detaylı ve bilgilendirici ol. Kısa ve yetersiz yanıtlardan kaçın. En az 5-7 cümle kullan. Akıcı ve bağlantılı paragraflar oluştur.
+        IMPORTANT: Adjust your response length naturally based on the user's message and the conversation flow, following the guideline above. Aim for concise responses by default, but feel free to elaborate when the topic requires more detail or explanation, just like a real person would.
         """
 
     def format_language_level_for_prompt(self, message_content: str, context: Optional[Dict[str, Any]] = None) -> str:
