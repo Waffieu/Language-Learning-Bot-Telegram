@@ -276,27 +276,9 @@ class WordTranslator:
                     # Format should be: word = CEFR_LEVEL = translation
                     parts = line.split('=', 2)
 
-                    if len(parts) >= 3:  # We have CEFR level and translation
-                        word = parts[0].strip().lower()
-                        cefr_level = parts[1].strip().upper()
-                        translation = parts[2].strip()
 
-                        # Add translations for A2 and above levels
-                        if translation != "[SKIP]" and cefr_level in ["A2", "B1", "B2", "C1", "C2", "[A2]", "[B1]", "[B2]", "[C1]", "[C2]"]:
-                            # Store the translation with CEFR level
-                            clean_level = cefr_level.replace("[", "").replace("]", "")
-                            translations[word] = (translation, clean_level)
 
-                    if len(parts) >= 3:  # We have CEFR level and translation
-                        word = parts[0].strip().lower()
-                        cefr_level = parts[1].strip().upper()
-                        translation = parts[2].strip()
 
-                        # Add translations for A2 and above levels
-                        if translation != "[SKIP]" and cefr_level in ["A2", "B1", "B2", "C1", "C2", "[A2]", "[B1]", "[B2]", "[C1]", "[C2]"]:
-                            # Store the translation with CEFR level
-                            clean_level = cefr_level.replace("[", "").replace("]", "")
-                            forced_translations[word] = (translation, clean_level)
 
 
             # Update the cache with new translations
@@ -390,16 +372,7 @@ class WordTranslator:
                     # Format should be: word = CEFR_LEVEL = translation
                     parts = line.split('=', 2)
 
-                    if len(parts) >= 3:  # We have CEFR level and translation
-                        word = parts[0].strip().lower()
-                        cefr_level = parts[1].strip().upper()
-                        translation = parts[2].strip()
 
-                        # Add translations for A2 and above levels
-                        if translation != "[SKIP]" and cefr_level in ["A2", "B1", "B2", "C1", "C2", "[A2]", "[B1]", "[B2]", "[C1]", "[C2]"]:
-                            # Store the translation with CEFR level
-                            clean_level = cefr_level.replace("[", "").replace("]", "")
-                            translations[word] = (translation, clean_level)
 
 
 
