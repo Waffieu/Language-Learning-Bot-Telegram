@@ -61,11 +61,11 @@ DYNAMIC_MESSAGE_LENGTH_ENABLED = True
 # Probability distribution for different response lengths
 # These values determine the approximate probability of each response type
 # Daha uzun ve insan gibi yanıt dağılımı - uzun yanıtlar için daha yüksek olasılık
-EXTREMELY_SHORT_RESPONSE_PROBABILITY = 0.50  # Favor more very short responses
+EXTREMELY_SHORT_RESPONSE_PROBABILITY = 0.60  # Favor more very short responses
 SLIGHTLY_SHORT_RESPONSE_PROBABILITY = 0.30  # Favor more short responses
-MEDIUM_RESPONSE_PROBABILITY = 0.15  # Reduce medium length responses
-SLIGHTLY_LONG_RESPONSE_PROBABILITY = 0.03  # Reduce slightly long responses
-LONG_RESPONSE_PROBABILITY = 0.02  # Keep long responses infrequent
+MEDIUM_RESPONSE_PROBABILITY = 0.07  # Reduce medium length responses
+SLIGHTLY_LONG_RESPONSE_PROBABILITY = 0.02  # Reduce slightly long responses
+LONG_RESPONSE_PROBABILITY = 0.01  # Keep long responses infrequent
 # Randomness factor for response length (0.0-1.0, higher = more random)
 RESPONSE_LENGTH_RANDOMNESS = 0.85  # Increase randomness for more natural variation
 
