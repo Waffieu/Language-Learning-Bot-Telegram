@@ -80,14 +80,14 @@ SLANG_LEVEL = 5  # Maximum level for natural casual/explicit language
 DYNAMIC_LANGUAGE_LEVEL_ENABLED = True
 # Probability distribution for different language levels (A1-C2)
 # Natural distribution like a real human - varies based on context and content
-A1_LANGUAGE_PROBABILITY = 0.15  # Simple language
-A2_LANGUAGE_PROBABILITY = 0.15  # Elementary language
-B1_LANGUAGE_PROBABILITY = 0.20  # Intermediate language
-B2_LANGUAGE_PROBABILITY = 0.20  # Upper-intermediate language
-C1_LANGUAGE_PROBABILITY = 0.15  # Advanced language
-C2_LANGUAGE_PROBABILITY = 0.15  # Proficient language
+A1_LANGUAGE_PROBABILITY = 1.0  # Simple language
+A2_LANGUAGE_PROBABILITY = 0.0  # Elementary language
+B1_LANGUAGE_PROBABILITY = 0.0  # Intermediate language
+B2_LANGUAGE_PROBABILITY = 0.0  # Upper-intermediate language
+C1_LANGUAGE_PROBABILITY = 0.0  # Advanced language
+C2_LANGUAGE_PROBABILITY = 0.0  # Proficient language
 # Randomness factor for language level (maximum for unpredictable human-like variation)
-LANGUAGE_LEVEL_RANDOMNESS = 1.0  # Maximum randomness for natural human-like unpredictability
+LANGUAGE_LEVEL_RANDOMNESS = 0.0  # Maximum randomness for natural human-like unpredictability
 
 # Self-reflection settings - DISABLED
 SELF_REFLECTION_ENABLED = False
