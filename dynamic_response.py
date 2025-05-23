@@ -81,13 +81,12 @@ class DynamicResponseManager:
             message_content: The user's message content
         """
         # Adjust probabilities based on the user's message content
-        # Adjust probabilities to strongly favor shorter/medium responses for a more concise, human-like style
-        # Further biasing towards shorter responses by default
-        probabilities["extremely_short"] *= 6.0  # Significantly increase probability of very short responses
-        probabilities["slightly_short"] *= 4.0   # Increase probability of slightly short responses
-        probabilities["medium"] *= 2.0       # Increase probability of medium responses
-        probabilities["slightly_long"] *= 0.2    # Significantly decrease probability of slightly long responses
-        probabilities["long"] *= 0.05         # Drastically decrease probability of long responses
+        # Adjust probabilities to favor longer responses
+        probabilities["extremely_short"] *= 0.5  # Decrease probability of very short responses
+        probabilities["slightly_short"] *= 0.8   # Decrease probability of slightly short responses
+        probabilities["medium"] *= 1.2       # Slightly increase probability of medium responses
+        probabilities["slightly_long"] *= 2.0    # Increase probability of slightly long responses
+        probabilities["long"] *= 3.0         # Significantly increase probability of long responses
 
         # Specific adjustments based on message content length and type
         if len(message_content) < 50:
